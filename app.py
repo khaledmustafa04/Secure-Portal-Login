@@ -287,14 +287,32 @@ def run_https():
     app_https.run(host='0.0.0.0', port=443, ssl_context=context)
 
 if __name__ == '__main__':
+    # Make sure users.json exists
     if not os.path.exists(USER_FILE):
         with open(USER_FILE, 'w') as f:
             json.dump({}, f)
 
-    t1 = threading.Thread(target=run_http, daemon=True)
-    t2 = threading.Thread(target=run_https, daemon=True)
+    from threading import Thread
 
-    t1.start()
-    t2.start()
-    t1.join()
-    t2.join()
+    # Run HTTP on port 5000 (dev-friendly, no warnings)
+    def run_http():
+        app = create_app()
+        app.run(host='0.0.0.0', port=5000)
+
+    # Run HTTPS on port 443 (self-signed SSL)
+    def run_https():
+        app = create_app()
+        from flask_talisman import Talisman
+        Talisman(app, content_security_policy=None)
+        context = ('server.crt', 'server.key')
+        app.run(host='0.0.0.0', port=443, ssl_context=context)
+
+    print("Starting Secure Portal on HTTP 5000 & HTTPS 443...")
+
+    Thread(target=run_http, daemon=True).start()
+    Thread(target=run_https, daemon=True).start()
+
+    # KEEP PROCESS ALIVE (no crash, no join required)
+    while True:
+        pass
+
